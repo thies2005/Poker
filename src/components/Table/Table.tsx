@@ -15,8 +15,6 @@ interface TableProps {
 
 export default function Table({ gameState, playerId, onStartGame, onNewHand }: TableProps) {
     const isHost = gameState.players[0]?.id === playerId;
-    const me = gameState.players.find(p => p.id === playerId);
-    const isMyTurn = me?.isCurrentTurn ?? false;
     const hasGameStarted = gameState.phase !== 'waiting';
     const isGameOver = gameState.phase === 'showdown' || gameState.phase === 'ended';
 
@@ -64,7 +62,7 @@ export default function Table({ gameState, playerId, onStartGame, onNewHand }: T
                 )}
 
                 <div className={styles['players-container']}>
-                    {gameState.players.map((player, index) => (
+                    {gameState.players.map((player) => (
                         <div key={player.id} className={styles['player-position']}>
                             <PlayerSeat
                                 player={player}

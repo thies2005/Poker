@@ -3,7 +3,7 @@
 import React, { useState, useEffect, use } from 'react';
 import { useRouter } from 'next/navigation';
 import { GameState } from '@/game/GameState';
-import { getSocket, onGameUpdate, onError, startGame, sendAction, requestNewHand, disconnect, rejoinRoom } from '@/lib/socket';
+import { onGameUpdate, onError, startGame, sendAction, requestNewHand, rejoinRoom } from '@/lib/socket';
 import Table from '@/components/Table/Table';
 import Controls from '@/components/Controls/Controls';
 
@@ -17,10 +17,8 @@ export default function RoomPage({ params }: RoomPageProps) {
     const [gameState, setGameState] = useState<GameState | null>(null);
     const [playerId, setPlayerId] = useState<string | null>(null);
     const [error, setError] = useState<string>('');
-    const [isConnecting, setIsConnecting] = useState(true);
 
     useEffect(() => {
-        const storedPlayerId = sessionStorage.getItem('playerId');
         const storedPlayerName = sessionStorage.getItem('playerName');
 
         if (!storedPlayerName) {
@@ -35,10 +33,8 @@ export default function RoomPage({ params }: RoomPageProps) {
                 setPlayerId(result.playerId);
                 setGameState(result.state);
                 sessionStorage.setItem('playerId', result.playerId);
-                setIsConnecting(false);
             } catch (err) {
                 setError(err instanceof Error ? err.message : 'Failed to connect');
-                setIsConnecting(false);
             }
         };
 
@@ -58,12 +54,6 @@ export default function RoomPage({ params }: RoomPageProps) {
             unsubError();
         };
     }, [code, router]);
-
-    useEffect(() => {
-        return () => {
-            // Cleanup on unmount
-        };
-    }, []);
 
     if (!gameState || !playerId) {
         return (

@@ -1,4 +1,4 @@
-import { Card, RANK_VALUES, Rank } from './Card';
+import { Card, RANK_VALUES } from './Card';
 
 export type HandRank =
     | 'royal_flush'
@@ -18,19 +18,6 @@ export interface HandResult {
     highCards: number[];
     description: string;
 }
-
-const HAND_RANK_VALUES: Record<HandRank, number> = {
-    'royal_flush': 10,
-    'straight_flush': 9,
-    'four_of_a_kind': 8,
-    'full_house': 7,
-    'flush': 6,
-    'straight': 5,
-    'three_of_a_kind': 4,
-    'two_pair': 3,
-    'pair': 2,
-    'high_card': 1
-};
 
 function getCombinations<T>(arr: T[], size: number): T[][] {
     if (size === 0) return [[]];

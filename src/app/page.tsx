@@ -1,6 +1,6 @@
 'use client';
 
-import React, { useState, useEffect } from 'react';
+import React, { useState } from 'react';
 import { useRouter } from 'next/navigation';
 import { createRoom, joinRoom } from '@/lib/socket';
 import styles from './page.module.css';

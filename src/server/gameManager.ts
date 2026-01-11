@@ -1,13 +1,12 @@
-import { v4 as uuidv4 } from 'uuid';
 import { GameState, Player, PlayerAction, createInitialGameState, getPlayerView } from '../game/GameState';
 import { Deck } from '../game/Deck';
-import { Card } from '../game/Card';
 import { evaluateHand, compareHands } from '../game/HandEvaluator';
 
 interface Room {
     state: GameState;
     deck: Deck;
     hostId: string;
+    playersActedThisRound: Set<string>;
 }
 
 const rooms = new Map<string, Room>();
@@ -43,7 +42,7 @@ export function createRoom(hostId: string, hostName: string): { roomCode: string
     };
     state.players.push(host);
 
-    rooms.set(roomCode, { state, deck: new Deck(), hostId });
+    rooms.set(roomCode, { state, deck: new Deck(), hostId, playersActedThisRound: new Set() });
     playerRooms.set(hostId, roomCode);
 
     return { roomCode, state: getPlayerView(state, hostId) };
@@ -121,12 +120,13 @@ function startNewHand(room: Room): void {
     room.state.currentBet = room.state.bigBlind;
     room.state.minRaise = room.state.bigBlind;
 
-    // Deal hole cards
+    // Deal hole cards to all active players
     room.state.players.forEach(p => {
-        if (!p.folded) {
-            p.cards = room.deck.deal(2);
-        }
+        p.cards = room.deck.deal(2);
     });
+
+    // Reset players acted tracker for new hand
+    room.playersActedThisRound.clear();
 
     room.state.phase = 'preflop';
     room.state.currentPlayerIndex = (bbIndex + 1) % room.state.players.length;
@@ -163,11 +163,13 @@ export function handleAction(roomCode: string, playerId: string, action: PlayerA
         case 'fold':
             player.folded = true;
             room.state.lastAction = { playerId, action: 'fold' };
+            room.playersActedThisRound.add(playerId);
             break;
 
         case 'check':
             if (toCall > 0) return { success: false, error: 'Cannot check, must call or fold' };
             room.state.lastAction = { playerId, action: 'check' };
+            room.playersActedThisRound.add(playerId);
             break;
 
         case 'call':
@@ -178,6 +180,7 @@ export function handleAction(roomCode: string, playerId: string, action: PlayerA
             room.state.pot += callAmount;
             if (player.chips === 0) player.allIn = true;
             room.state.lastAction = { playerId, action: 'call', amount: callAmount };
+            room.playersActedThisRound.add(playerId);
             break;
 
         case 'raise':
@@ -193,6 +196,9 @@ export function handleAction(roomCode: string, playerId: string, action: PlayerA
             room.state.minRaise = raiseAmount;
             if (player.chips === 0) player.allIn = true;
             room.state.lastAction = { playerId, action: 'raise', amount: raiseAmount };
+            // Reset acted tracking when someone raises - others need to act again
+            room.playersActedThisRound.clear();
+            room.playersActedThisRound.add(playerId);
             break;
 
         case 'all_in':
@@ -204,8 +210,11 @@ export function handleAction(roomCode: string, playerId: string, action: PlayerA
             if (player.bet > room.state.currentBet) {
                 room.state.minRaise = player.bet - room.state.currentBet;
                 room.state.currentBet = player.bet;
+                // Reset acted tracking when someone raises (all-in that raises)
+                room.playersActedThisRound.clear();
             }
             room.state.lastAction = { playerId, action: 'all_in', amount: allInAmount };
+            room.playersActedThisRound.add(playerId);
             break;
     }
 
@@ -228,9 +237,22 @@ function checkRoundComplete(room: Room): void {
         return;
     }
 
+    // Check if all active players are all-in - if so, run to showdown
+    const playersWhoCanAct = room.state.players.filter(p => !p.folded && !p.allIn);
+    if (playersWhoCanAct.length === 0) {
+        // All remaining players are all-in - deal remaining cards and go to showdown
+        while (room.state.phase !== 'river' && room.state.phase !== 'showdown') {
+            advancePhase(room);
+        }
+        // Make sure we get to showdown
+        if (room.state.phase !== 'showdown') {
+            determineWinner(room);
+        }
+        return;
+    }
+
     // Find next player to act
     const playersToAct = room.state.players.filter(p => !p.folded && !p.allIn && p.bet < room.state.currentBet);
-    const playersWhoCanAct = room.state.players.filter(p => !p.folded && !p.allIn);
 
     // Move to next player
     do {
@@ -245,7 +267,8 @@ function checkRoundComplete(room: Room): void {
 
     // Check if betting round is complete (everyone has acted and bets are equal)
     const allBetsEqual = playersToAct.length === 0;
-    const allActed = room.state.players.every(p => p.folded || p.allIn || (p.bet === room.state.currentBet && room.state.lastAction));
+    const eligiblePlayers = room.state.players.filter(p => !p.folded && !p.allIn);
+    const allActed = eligiblePlayers.length === 0 || eligiblePlayers.every(p => room.playersActedThisRound.has(p.id));
 
     if (allBetsEqual && allActed) {
         advancePhase(room);
@@ -257,6 +280,8 @@ function advancePhase(room: Room): void {
     room.state.players.forEach(p => p.bet = 0);
     room.state.currentBet = 0;
     room.state.minRaise = room.state.bigBlind;
+    // Clear acted tracking for new round
+    room.playersActedThisRound.clear();
 
     switch (room.state.phase) {
         case 'preflop':

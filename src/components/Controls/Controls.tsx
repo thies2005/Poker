@@ -40,6 +40,12 @@ export default function Controls({ gameState, playerId, onAction }: ControlsProp
     const canRaise = me.chips > toCall + gameState.minRaise;
     const maxRaise = me.chips - toCall;
 
+    // Reset raise amount when turn starts
+    if (raiseAmount < gameState.minRaise || raiseAmount > maxRaise) {
+        const defaultRaise = Math.max(gameState.minRaise, Math.min(gameState.minRaise * 2, maxRaise));
+        setRaiseAmount(defaultRaise);
+    }
+
     const handleRaise = () => {
         onAction({ type: 'raise', amount: raiseAmount });
     };

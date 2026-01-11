@@ -10,8 +10,7 @@ import {
     getRoomState,
     getFullRoomState,
     newHand,
-    playerDisconnected,
-    playerReconnected
+    playerDisconnected
 } from './src/server/gameManager';
 import { PlayerAction } from './src/game/GameState';
 
