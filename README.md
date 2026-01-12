@@ -2,6 +2,8 @@
 
 Real-time multiplayer Texas Hold'em poker with shareable room codes.
 
+- [Documentation](./DOCS.md) - Detailed technical documentation
+
 ## Play Online
 Create a room, share the code, and play with friends!
 

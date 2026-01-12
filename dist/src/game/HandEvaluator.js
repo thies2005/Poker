@@ -3,18 +3,6 @@ Object.defineProperty(exports, "__esModule", { value: true });
 exports.evaluateHand = evaluateHand;
 exports.compareHands = compareHands;
 const Card_1 = require("./Card");
-const HAND_RANK_VALUES = {
-    'royal_flush': 10,
-    'straight_flush': 9,
-    'four_of_a_kind': 8,
-    'full_house': 7,
-    'flush': 6,
-    'straight': 5,
-    'three_of_a_kind': 4,
-    'two_pair': 3,
-    'pair': 2,
-    'high_card': 1
-};
 function getCombinations(arr, size) {
     if (size === 0)
         return [[]];
